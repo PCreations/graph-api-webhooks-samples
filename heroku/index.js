@@ -10,11 +10,12 @@ var bodyParser = require('body-parser');
 var express = require('express');
 var app = express();
 var xhub = require('express-x-hub');
+var util = require('util');
 
 app.set('port', (process.env.PORT || 5000));
 app.listen(app.get('port'));
 
-app.use(xhub({ algorithm: 'sha1', secret: process.env.APP_SECRET }));
+app.use(xhub({ algorithm: 'sha1', secret: "5db1b7c8d9f9188561eb883d68d30766" }));
 app.use(bodyParser.json());
 
 app.get('/', function(req, res) {
@@ -34,25 +35,35 @@ app.get(['/facebook', '/instagram'], function(req, res) {
 });
 
 app.post('/facebook', function(req, res) {
-  console.log('Facebook request body:');
+  //console.log('Facebook request body:');
 
+  var response = ''
+  var status = 200
   if (req.isXHub) {
-    console.log('request header X-Hub-Signature found, validating');
+    //console.log('request header X-Hub-Signature found, validating');
     if (req.isXHubValid()) {
-      console.log('request header X-Hub-Signature validated');
-      res.send('Verified!\n');
+      //console.log('request header X-Hub-Signature validated');
+      response = 'Verified!\n';
     }
   }
   else {
-    console.log('Warning - request header X-Hub-Signature not present or invalid');
-    res.send('Failed to verify!\n');
+    //console.log('Warning - request header X-Hub-Signature not present or invalid');
+    status = 401
+    response = 'Failed to verify!\n';
     // recommend sending 401 status in production for non-validated signatures
     // res.sendStatus(401);
   }
-  console.log(req.body);
+  var entry = req.body.entry[0]
+  var changes = entry.changes[0]
+  if (changes.field === 'feed') {
+    if (changes.value.item === 'comment' && changes.value.verb === 'add') {
+      console.log(changes.value.sender_name + ' : "'+ changes.value.message +'"');
+    }
+  }
+  //console.log(util.inspect(req.body, {showHidden: false, depth: null}))
 
   // Process the Facebook updates here
-  res.sendStatus(200);
+  res.status(status).send(response);
 });
 
 app.post('/instagram', function(req, res) {
